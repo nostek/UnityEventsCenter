@@ -15,7 +15,7 @@ namespace UnityEventsCenter
 			Assert.AreEqual(0, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
 
 			var installer = new EventsInstaller()
-				.Register<TestEvent>(container.OnReceived)
+				.Subscribe<TestEvent>(container.OnReceived)
 				.Build();
 
 			Assert.AreEqual(1, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
@@ -24,13 +24,13 @@ namespace UnityEventsCenter
 
 			Assert.AreEqual(5, container.LastValue);
 
-			EventsCenter.Unregister<TestEvent>(container.OnReceived);
+			EventsCenter.Unsubscribe<TestEvent>(container.OnReceived);
 			EventsCenter.Invoke(new TestEvent(15));
 
 			Assert.AreEqual(0, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
 			Assert.AreEqual(5, container.LastValue);
 
-			EventsCenter.Register<TestEvent>(container.OnReceived);
+			EventsCenter.Subscribe<TestEvent>(container.OnReceived);
 			EventsCenter.Invoke(new TestEvent(20));
 
 			Assert.AreEqual(1, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
@@ -42,10 +42,16 @@ namespace UnityEventsCenter
 			}, Is.Not.AllocatingGCMemory());
 
 			installer.Dispose();
-			EventsCenter.Invoke(new TestEvent(10));
-
 			Assert.AreEqual(0, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
+
+			EventsCenter.Invoke(new TestEvent(10)); //should be ignored
 			Assert.AreEqual(20, container.LastValue);
+
+			EventsCenter.SubscribeOnce<TestEvent>(container.OnReceived);
+			Assert.AreEqual(1, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
+			EventsCenter.Invoke(new TestEvent(25));
+			Assert.AreEqual(0, EventsCenter.CalculateNumberOfInvocations<TestEvent>());
+			Assert.AreEqual(25, container.LastValue);
 		}
 
 		readonly struct TestEvent : IEvent

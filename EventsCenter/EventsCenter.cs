@@ -10,28 +10,46 @@ namespace UnityEventsCenter
 {
 	internal static class EventsCenter<T> where T : IEvent
 	{
+		static event Action<T> OnEventOnce;
 		static event Action<T> OnEvent;
 
 		public static void Clear()
 		{
 			//Debug.Log($"Clear EventsCenter<{typeof(T)}> Listeners: {OnEvent?.GetInvocationList().Length}");
+			OnEventOnce = null;
 			OnEvent = null;
 		}
 
-		public static int CalculateNumberOfInvocations() => OnEvent?.GetInvocationList().Length ?? 0;
+		public static int CalculateNumberOfInvocations() => OnEventOnce?.GetInvocationList().Length ?? 0 + OnEvent?.GetInvocationList().Length ?? 0;
 
-		public static void Register(Action<T> callback)
+		public static void SubscribeOnce(Action<T> callback)
+		{
+			OnEventOnce += callback;
+		}
+
+		public static void UnsubscribeOnce(Action<T> callback)
+		{
+			OnEventOnce -= callback;
+		}
+
+		public static void Subscribe(Action<T> callback)
 		{
 			OnEvent += callback;
 		}
 
-		public static void Unregister(Action<T> callback)
+		public static void Unsubscribe(Action<T> callback)
 		{
 			OnEvent -= callback;
 		}
 
 		public static void Invoke(in T obj)
 		{
+			if (OnEventOnce != null)
+			{
+				var once = OnEventOnce;
+				OnEventOnce = null;
+				once.Invoke(obj);
+			}
 			OnEvent?.Invoke(obj);
 		}
 	}
@@ -44,16 +62,28 @@ namespace UnityEventsCenter
 			return EventsCenter<T>.CalculateNumberOfInvocations();
 		}
 
-		public static void Register<T>(Action<T> callback)
+		public static void SubscribeOnce<T>(Action<T> callback)
 			where T : IEvent
 		{
-			EventsCenter<T>.Register(callback);
+			EventsCenter<T>.SubscribeOnce(callback);
 		}
 
-		public static void Unregister<T>(Action<T> callback)
+		public static void UnsubscribeOnce<T>(Action<T> callback)
 			where T : IEvent
 		{
-			EventsCenter<T>.Unregister(callback);
+			EventsCenter<T>.UnsubscribeOnce(callback);
+		}
+
+		public static void Subscribe<T>(Action<T> callback)
+			where T : IEvent
+		{
+			EventsCenter<T>.Subscribe(callback);
+		}
+
+		public static void Unsubscribe<T>(Action<T> callback)
+			where T : IEvent
+		{
+			EventsCenter<T>.Unsubscribe(callback);
 		}
 
 		public static void Invoke<T>(in T obj)

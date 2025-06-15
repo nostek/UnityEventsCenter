@@ -5,7 +5,7 @@ namespace UnityEventsCenter
 {
 	public class EventsInstaller : IDisposable
 	{
-		class ActionTRef<T> : IDisposable
+		internal readonly struct ActionTRef<T> : IDisposable
 			where T : IEvent
 		{
 			readonly Action<T> callback;
@@ -13,20 +13,20 @@ namespace UnityEventsCenter
 			public ActionTRef(Action<T> callback)
 			{
 				this.callback = callback;
+				EventsCenter.Subscribe(callback);
 			}
 
 			public void Dispose()
 			{
-				EventsCenter<T>.Unregister(callback);
+				EventsCenter<T>.Unsubscribe(callback);
 			}
 		}
 
 		readonly List<IDisposable> refs = new();
 
-		public EventsInstaller Register<T>(Action<T> callback)
+		public EventsInstaller Subscribe<T>(Action<T> callback)
 			where T : IEvent
 		{
-			EventsCenter.Register(callback);
 			refs.Add(new ActionTRef<T>(callback));
 			return this;
 		}
@@ -40,6 +40,7 @@ namespace UnityEventsCenter
 		{
 			foreach (var r in refs)
 				r.Dispose();
+			refs.Clear();
 		}
 	}
 }
