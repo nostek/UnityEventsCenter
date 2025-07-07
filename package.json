@@ -3,5 +3,9 @@
   "description": "A EventsCenter system",
   "version": "1.0.0",
   "unity": "6000.0",
-  "displayName": "UnityEventsCenter"
+  "displayName": "UnityEventsCenter",
+  "author": {
+    "name": "Simon Rodriguez",
+    "url": "https://github.com/nostek"
+  }  
 }
