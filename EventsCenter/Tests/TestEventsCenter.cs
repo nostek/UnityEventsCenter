@@ -54,10 +54,37 @@ namespace UnityEventsCenter
 			Assert.AreEqual(25, container.LastValue);
 		}
 
+		[Test]
+		public static void RunPerformanceEventsCenter()
+		{
+			var container = new Receiver();
+
+			var installer = new EventsInstaller()
+				.Subscribe<TestEvent>(container.OnReceived)
+				.Build();
+
+			var start = System.Diagnostics.Stopwatch.GetTimestamp();
+			for (int i = 0; i < 100000; i++)
+			{
+				EventsCenter.Invoke(new TestEvent(1));
+				EventsCenter.Invoke(new TestEvent(2));
+				EventsCenter.Invoke(new TestEvent(3));
+				EventsCenter.Invoke(new TestEvent(4));
+				EventsCenter.Invoke(new TestEvent(5));
+			}
+			var end = System.Diagnostics.Stopwatch.GetTimestamp();
+
+			installer.Dispose();
+
+			var elapsed = System.TimeSpan.FromTicks(end - start);
+			UnityEngine.Debug.Log($"Elapsed time for 500,000 invocations: {elapsed.TotalMilliseconds} ms");
+		}
+
 		readonly struct TestEvent : IEvent
 		{
-			public TestEvent(int v) => Value = v;
+			public TestEvent(int v) => Value = Value2 = Value3 = Value4 = v;
 			public readonly int Value;
+			public readonly int Value2, Value3, Value4;
 		}
 
 		class Receiver
