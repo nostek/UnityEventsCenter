@@ -28,7 +28,7 @@ void OnButton()
 	EventsCenter.Invoke(new MyEvent(42));
 }
 
-void OnMyEvent(MyEvent ev)
+void OnMyEvent(in MyEvent ev)
 {
 	//Handle
 }
