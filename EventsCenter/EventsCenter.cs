@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -8,10 +7,10 @@ using UnityEditor;
 
 namespace UnityEventsCenter
 {
-	internal static class EventsCenter<T> where T : IEvent
+	internal static class EventsCenter<T> where T : struct, IEvent
 	{
-		static event Action<T> OnEventOnce;
-		static event Action<T> OnEvent;
+		static event EventAction<T> OnEventOnce;
+		static event EventAction<T> OnEvent;
 
 		public static void Clear()
 		{
@@ -22,22 +21,22 @@ namespace UnityEventsCenter
 
 		public static int CalculateNumberOfInvocations() => OnEventOnce?.GetInvocationList().Length ?? 0 + OnEvent?.GetInvocationList().Length ?? 0;
 
-		public static void SubscribeOnce(Action<T> callback)
+		public static void SubscribeOnce(EventAction<T> callback)
 		{
 			OnEventOnce += callback;
 		}
 
-		public static void UnsubscribeOnce(Action<T> callback)
+		public static void UnsubscribeOnce(EventAction<T> callback)
 		{
 			OnEventOnce -= callback;
 		}
 
-		public static void Subscribe(Action<T> callback)
+		public static void Subscribe(EventAction<T> callback)
 		{
 			OnEvent += callback;
 		}
 
-		public static void Unsubscribe(Action<T> callback)
+		public static void Unsubscribe(EventAction<T> callback)
 		{
 			OnEvent -= callback;
 		}
@@ -57,39 +56,39 @@ namespace UnityEventsCenter
 	public static class EventsCenter
 	{
 		public static int CalculateNumberOfInvocations<T>()
-			where T : IEvent
+			where T : struct, IEvent
 		{
 			return EventsCenter<T>.CalculateNumberOfInvocations();
 		}
 
-		public static void SubscribeOnce<T>(Action<T> callback)
-			where T : IEvent
+		public static void SubscribeOnce<T>(EventAction<T> callback)
+			where T : struct, IEvent
 		{
 			EventsCenter<T>.SubscribeOnce(callback);
 		}
 
-		public static void UnsubscribeOnce<T>(Action<T> callback)
-			where T : IEvent
+		public static void UnsubscribeOnce<T>(EventAction<T> callback)
+			where T : struct, IEvent
 		{
 			EventsCenter<T>.UnsubscribeOnce(callback);
 		}
 
-		public static void Subscribe<T>(Action<T> callback)
-			where T : IEvent
+		public static void Subscribe<T>(EventAction<T> callback)
+			where T : struct, IEvent
 		{
 			EventsCenter<T>.Subscribe(callback);
 		}
 
-		public static void Unsubscribe<T>(Action<T> callback)
-			where T : IEvent
+		public static void Unsubscribe<T>(EventAction<T> callback)
+			where T : struct, IEvent
 		{
 			EventsCenter<T>.Unsubscribe(callback);
 		}
 
 		public static void Invoke<T>(in T obj)
-			where T : IEvent
+			where T : struct, IEvent
 		{
-			EventsCenter<T>.Invoke(obj);
+			EventsCenter<T>.Invoke(in obj);
 		}
 
 #if UNITY_EDITOR

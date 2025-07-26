@@ -6,11 +6,11 @@ namespace UnityEventsCenter
 	public class EventsInstaller : IDisposable
 	{
 		internal readonly struct ActionTRef<T> : IDisposable
-			where T : IEvent
+			where T : struct, IEvent
 		{
-			readonly Action<T> callback;
+			readonly EventAction<T> callback;
 
-			public ActionTRef(Action<T> callback)
+			public ActionTRef(EventAction<T> callback)
 			{
 				this.callback = callback;
 				EventsCenter.Subscribe(callback);
@@ -24,8 +24,8 @@ namespace UnityEventsCenter
 
 		readonly List<IDisposable> refs = new();
 
-		public EventsInstaller Subscribe<T>(Action<T> callback)
-			where T : IEvent
+		public EventsInstaller Subscribe<T>(EventAction<T> callback)
+			where T : struct, IEvent
 		{
 			refs.Add(new ActionTRef<T>(callback));
 			return this;

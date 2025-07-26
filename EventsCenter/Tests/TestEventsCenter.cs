@@ -64,7 +64,7 @@ namespace UnityEventsCenter
 		{
 			public int LastValue = -1;
 
-			public void OnReceived(TestEvent e)
+			public void OnReceived(in TestEvent e)
 			{
 				LastValue = e.Value;
 			}
