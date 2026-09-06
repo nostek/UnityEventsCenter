@@ -49,6 +49,12 @@ namespace UnityEventsCenter
 			return this;
 		}
 
+		public EventsInstaller Subscribe(IDisposable disposable)
+		{
+			refs.Add(disposable);
+			return this;
+		}
+
 		public EventsInstaller Subscribe<T>(EventReactiveSubscription<T> subscription)
 		{
 			refs.Add(subscription);
@@ -71,6 +77,12 @@ namespace UnityEventsCenter
 			foreach (var r in refs)
 				r.Dispose();
 			refs.Clear();
+		}
+
+		public static EventsInstaller operator &(EventsInstaller a, IDisposable b)
+		{
+			a.refs.Add(b);
+			return a;
 		}
 	}
 }
