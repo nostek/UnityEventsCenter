@@ -11,9 +11,11 @@ namespace UnityEventsCenter
 		T Value { get; }
 	}
 
-	delegate void EventReactiveListener<T>(in T obj);
+	internal delegate void EventReactiveListener<T>(in T obj);
 
 	public delegate void EventReactiveAction<in T>(T obj);
+
+	#region SUBSCRIPTION
 
 	public readonly struct EventReactiveSubscription<T> : IDisposable
 	{
@@ -33,6 +35,10 @@ namespace UnityEventsCenter
 			reactive.Unsubscribe(callback);
 		}
 	}
+
+	#endregion
+
+	#region SOURCE
 
 	public class EventReactiveSource<T> : EventReactive<T>
 	{
@@ -54,6 +60,8 @@ namespace UnityEventsCenter
 		public override string ToString() => $"EventReactiveSource<{typeof(T).Name}>(value: {Value})";
 	}
 
+	#endregion
+
 	public class EventReactive<T>
 	{
 		protected T value;
@@ -61,9 +69,15 @@ namespace UnityEventsCenter
 		ISubscriptionTransformer<T> transformer;
 
 		// ReSharper disable once MemberCanBeProtected.Global
-		public static EventReactive<T> Unconnected()
+		public static EventReactive<T> Disconnected()
 		{
 			return new EventReactive<T> { isDisconnected = true };
+		}
+
+		// ReSharper disable once MemberCanBeProtected.Global
+		public static EventReactive<T> Disconnected(T defaultValue)
+		{
+			return new EventReactive<T>(defaultValue) { isDisconnected = true };
 		}
 
 		// ReSharper disable once MemberCanBeProtected.Global
@@ -87,6 +101,8 @@ namespace UnityEventsCenter
 		public T Value => transformer != null ? transformer.Value : value;
 
 		public bool IsConnected => !isDisconnected;
+		public bool HasSubscribers => Subscribers != null;
+		public bool HasListeners => Listeners != null;
 
 		protected void SetValue(T v)
 		{
@@ -97,15 +113,18 @@ namespace UnityEventsCenter
 
 		public void Subscribe(EventReactiveAction<T> action)
 		{
-			transformer?.Subscribe();
+			if (Subscribers == null)
+				transformer?.Subscribe();
 			Subscribers += action;
 			if (!isDisconnected) action(value);
 		}
 
 		public void Unsubscribe(EventReactiveAction<T> action)
 		{
+			var had = Subscribers != null;
 			Subscribers -= action;
-			transformer?.Unsubscribe();
+			if (had && Subscribers == null)
+				transformer?.Unsubscribe();
 		}
 
 		public EventReactiveSubscription<T> OnValue(EventReactiveAction<T> action)
@@ -127,6 +146,8 @@ namespace UnityEventsCenter
 
 			public void Subscribe()
 			{
+				Assert.IsTrue(subscriptions < 1);
+
 				if (subscriptions == 0)
 				{
 					OnSubscribe();
@@ -138,6 +159,8 @@ namespace UnityEventsCenter
 
 			public void Unsubscribe()
 			{
+				Assert.IsTrue(subscriptions > 0);
+
 				subscriptions--;
 
 				if (subscriptions == 0)
@@ -270,8 +293,22 @@ namespace UnityEventsCenter
 		public void ConnectTo(EventReactive<T> ev)
 		{
 			Assert.IsNull(ev.transformer);
+			Assert.IsTrue(ev.isDisconnected);
 			ev.isDisconnected = false;
 			ev.transformer = new ConnectToTransformer(this, ev);
+
+			if (ev.Subscribers != null)
+				ev.transformer.Subscribe();
+
+			if (ev.Listeners != null)
+				ev.transformer.Subscribe();
+
+			if (!isDisconnected)
+			{
+				ev.value = value;
+				ev.Subscribers?.Invoke(value);
+				ev.Listeners?.Invoke(value);
+			}
 		}
 
 		sealed class ConnectToTransformer : SubscriptionTransformer<T>
