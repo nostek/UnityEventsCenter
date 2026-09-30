@@ -16,21 +16,32 @@ namespace UnityEventsCenter
 	{
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
+			var propTarget = property.FindPropertyRelative("target");
+			var propertyName = property.FindPropertyRelative("propertyName");
+
 			position.height = EditorGUIUtility.singleLineHeight;
 			EditorGUI.BeginProperty(position, label, property);
-			EditorGUI.PropertyField(position, property.FindPropertyRelative("Target"), label);
+			EditorGUI.PropertyField(position, propTarget, label);
+
 			EditorGUI.indentLevel++;
 			position.y += EditorGUIUtility.singleLineHeight + 2;
 
-			var propertyName = property.FindPropertyRelative("PropertyName");
-
-			var methods = GetMethods(property);
+			var methods = GetMethods(propTarget);
 			var current = Array.FindIndex(methods, (a) => a.tooltip == propertyName.stringValue);
 			if (current < 0)
 				current = 0;
 
-			var content = new GUIContent("Property", current == 0 ? EditorGUIUtility.IconContent("console.warnicon.sml").image : null);
-			var selected = EditorGUI.Popup(position, content, current, methods);
+			int selected = 0;
+
+			if (property.type == "EventBoundReactiveValue`1" && propTarget.objectReferenceValue == null)
+			{
+				EditorGUI.PropertyField(position, property.FindPropertyRelative("initialValue"), new GUIContent("Initial Value"));
+			}
+			else
+			{
+				var propertyNameLabel = new GUIContent("Property", current == 0 ? EditorGUIUtility.IconContent("console.warnicon.sml").image : null);
+				selected = EditorGUI.Popup(position, propertyNameLabel, current, methods);
+			}
 
 			if (selected == 0 && propertyName.stringValue != null)
 				propertyName.stringValue = null;
@@ -41,15 +52,11 @@ namespace UnityEventsCenter
 			EditorGUI.EndProperty();
 		}
 
-		static GUIContent[] GetMethods(SerializedProperty property)
+		static GUIContent[] GetMethods(SerializedProperty propTarget)
 		{
 			var methods = new List<GUIContent> { new("[Invalid]") };
 
-			var prop = property.FindPropertyRelative("Target");
-			if (prop == null)
-				goto exit;
-
-			var target = prop.objectReferenceValue;
+			var target = propTarget.objectReferenceValue;
 			if (target == null)
 				goto exit;
 
@@ -76,14 +83,17 @@ namespace UnityEventsCenter
 	[Serializable]
 	public abstract class EventBoundReactive
 	{
-		[SerializeField] protected Object Target;
-		[SerializeField] protected string PropertyName;
+		[SerializeField] protected Object target;
+		[SerializeField] protected string propertyName;
+
+		public Object Target => target;
+		public bool IsBound => target != null;
 	}
 
 	[Serializable]
 	public class EventBoundReactive<T> : EventBoundReactive
 	{
-		EventReactive<T> reactive;
+		protected EventReactive<T> reactive;
 
 		public EventReactive<T> Reactive
 		{
@@ -91,17 +101,46 @@ namespace UnityEventsCenter
 			{
 				if (reactive == null)
 				{
-					Debug.Assert(Target, "Missing Target");
-					var type = Target.GetType();
-					var method = type.GetMethod(PropertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static, null, Array.Empty<Type>(), null);
-					Debug.AssertFormat(method != null, Target, "Missing Method {0}", PropertyName);
-					var obj = method.Invoke(Target, null);
-					Debug.AssertFormat(obj != null, Target, "Null reactive {0} from {1}", typeof(EventReactive<T>), PropertyName);
-					reactive = method.Invoke(Target, null) as EventReactive<T>;
-					Debug.AssertFormat(reactive != null, Target, "Invalid {0} from {1}", typeof(EventReactive<T>), PropertyName);
+					Debug.Assert(target, "Missing Target");
+					var type = target.GetType();
+					var method = type.GetMethod(propertyName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static, null, Array.Empty<Type>(), null);
+					Debug.AssertFormat(method != null, target, "Missing Method {0}", propertyName);
+					var obj = method.Invoke(target, null);
+					Debug.AssertFormat(obj != null, target, "Null reactive {0} from {1}", typeof(EventReactive<T>), propertyName);
+					reactive = method.Invoke(target, null) as EventReactive<T>;
+					Debug.AssertFormat(reactive != null, target, "Invalid {0} from {1}", typeof(EventReactive<T>), propertyName);
 				}
 
 				return reactive;
+			}
+		}
+	}
+
+	[Serializable]
+	public class EventBoundReactiveValue<T> : EventBoundReactive<T>
+	{
+		[SerializeField] T initialValue;
+
+		public EventBoundReactiveValue(T defaultValue)
+		{
+			initialValue = defaultValue;
+		}
+
+		public EventBoundReactiveValue()
+		{
+
+		}
+
+		public T InitialValue => initialValue;
+
+		public new EventReactive<T> Reactive
+		{
+			get
+			{
+				if (reactive == null && !IsBound)
+					reactive = new EventReactive<T>(initialValue);
+
+				return base.Reactive;
 			}
 		}
 	}
