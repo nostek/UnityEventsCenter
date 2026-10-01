@@ -17,7 +17,7 @@ namespace UnityEventsCenter
 		public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 		{
 			var propTarget = property.FindPropertyRelative("target");
-			var propertyName = property.FindPropertyRelative("propertyName");
+			var propPropertyName = property.FindPropertyRelative("propertyName");
 
 			position.height = EditorGUIUtility.singleLineHeight;
 			EditorGUI.BeginProperty(position, label, property);
@@ -26,10 +26,15 @@ namespace UnityEventsCenter
 			EditorGUI.indentLevel++;
 			position.y += EditorGUIUtility.singleLineHeight + 2;
 
-			var methods = GetMethods(propTarget);
-			var current = Array.FindIndex(methods, (a) => a.tooltip == propertyName.stringValue);
-			if (current < 0)
-				current = 0;
+			(var methods, var targets) = GetMethods(propTarget);
+
+			int current = 0;
+			for (int i = 0; i < methods.Length; i++)
+				if (targets[i] == propTarget.objectReferenceValue && methods[i].tooltip == propPropertyName.stringValue)
+				{
+					current = i;
+					break;
+				}
 
 			int selected = 0;
 
@@ -43,34 +48,68 @@ namespace UnityEventsCenter
 				selected = EditorGUI.Popup(position, propertyNameLabel, current, methods);
 			}
 
-			if (selected == 0 && propertyName.stringValue != null)
-				propertyName.stringValue = null;
-			else if (methods[selected].tooltip != propertyName.stringValue)
-				propertyName.stringValue = methods[selected].tooltip;
+			if (!string.IsNullOrEmpty(methods[selected].tooltip) && propTarget.objectReferenceValue != targets[selected])
+				propTarget.objectReferenceValue = targets[selected];
+
+			if (string.IsNullOrEmpty(methods[selected].tooltip) && propPropertyName.stringValue != null)
+				propPropertyName.stringValue = null;
+			else if (methods[selected].tooltip != propPropertyName.stringValue)
+				propPropertyName.stringValue = methods[selected].tooltip;
 
 			EditorGUI.indentLevel--;
 			EditorGUI.EndProperty();
 		}
 
-		static GUIContent[] GetMethods(SerializedProperty propTarget)
+		static (GUIContent[] methods, List<Object> targets) GetMethods(SerializedProperty propTarget)
 		{
 			var methods = new List<GUIContent> { new("[Invalid]") };
+			var targets = new List<Object>() { null };
 
 			var target = propTarget.objectReferenceValue;
 			if (target == null)
 				goto exit;
 
-			var type = target.GetType();
-			foreach (var methodInfo in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-			{
-				if (methodInfo.ReturnType.Name != "EventReactive`1")
-					continue;
+			GameObject collection = null;
 
-				methods.Add(new GUIContent($"{type.Name}.{(methodInfo.Name.StartsWith("get_") ? methodInfo.Name[4..] : methodInfo.Name)}", methodInfo.Name));
+			if (target is GameObject go)
+				collection = go;
+			else if (target is Component component)
+				collection = component.gameObject;
+
+			if (collection)
+			{
+				var subs = collection.GetComponentsInChildren<Component>();
+				int index = 0;
+				foreach (var sub in subs)
+				{
+					var type = sub.GetType();
+					foreach (var methodInfo in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+					{
+						if (methodInfo.ReturnType.Name != "EventReactive`1")
+							continue;
+
+						methods.Add(new GUIContent($"[{index}] {type.Name}/{(methodInfo.Name.StartsWith("get_") ? methodInfo.Name[4..] : methodInfo.Name)}", methodInfo.Name));
+						targets.Add(sub);
+					}
+
+					index++;
+				}
+			}
+			else
+			{
+				var type = target.GetType();
+				foreach (var methodInfo in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+				{
+					if (methodInfo.ReturnType.Name != "EventReactive`1")
+						continue;
+
+					methods.Add(new GUIContent($"{type.Name}.{(methodInfo.Name.StartsWith("get_") ? methodInfo.Name[4..] : methodInfo.Name)}", methodInfo.Name));
+					targets.Add(target);
+				}
 			}
 
 		exit:
-			return methods.ToArray();
+			return (methods.ToArray(), targets);
 		}
 
 		public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
