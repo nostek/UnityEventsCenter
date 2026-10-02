@@ -138,6 +138,11 @@ namespace UnityEventsCenter
 			return new EventReactiveSubscription<T>(this, action);
 		}
 
+		public EventReactiveSubscription<T> BindTo(EventReactive<T> action)
+		{
+			return new EventReactiveSubscription<T>(this, action.SetValue);
+		}
+
 		#region SUBSCRIPTIONS
 
 		abstract class SubscriptionTransformer<T2> : ISubscriptionTransformer<T2>
