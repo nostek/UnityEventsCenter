@@ -61,12 +61,6 @@ namespace UnityEventsCenter
 			return this;
 		}
 
-		public EventsInstaller Subscribe<T>(EventReactive<T> instance, EventReactiveAction<T> callback)
-		{
-			refs.Add(new InstanceTRef<T>(instance, callback));
-			return this;
-		}
-
 		public EventsInstaller Build()
 		{
 			return this;

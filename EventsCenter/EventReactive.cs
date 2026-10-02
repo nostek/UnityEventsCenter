@@ -34,6 +34,12 @@ namespace UnityEventsCenter
 		{
 			reactive.Unsubscribe(callback);
 		}
+
+		public EventReactiveSubscription<T> AddTo(EventsInstaller installer)
+		{
+			installer.Subscribe(this);
+			return this;
+		}
 	}
 
 	#endregion
