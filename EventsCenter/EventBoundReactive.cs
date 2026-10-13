@@ -26,7 +26,10 @@ namespace UnityEventsCenter
 			EditorGUI.indentLevel++;
 			position.y += EditorGUIUtility.singleLineHeight + 2;
 
-			(var methods, var targets) = GetMethods(propTarget);
+			var genericTypeArguments = fieldInfo.FieldType.GenericTypeArguments;
+			Type fieldGenericType = (genericTypeArguments != null && genericTypeArguments.Length == 1) ? genericTypeArguments[0] : null;
+
+			(var methods, var targets) = GetMethods(fieldGenericType, propTarget);
 
 			int current = 0;
 			for (int i = 0; i < methods.Length; i++)
@@ -60,7 +63,7 @@ namespace UnityEventsCenter
 			EditorGUI.EndProperty();
 		}
 
-		static (GUIContent[] methods, List<Object> targets) GetMethods(SerializedProperty propTarget)
+		static (GUIContent[] methods, List<Object> targets) GetMethods(Type fieldGenericType, SerializedProperty propTarget)
 		{
 			var methods = new List<GUIContent> { new("[Invalid]") };
 			var targets = new List<Object>() { null };
@@ -87,6 +90,13 @@ namespace UnityEventsCenter
 					{
 						if (methodInfo.ReturnType.Name != "EventReactive`1")
 							continue;
+
+						if (fieldGenericType != null)
+						{
+							var genericTypeArguments = methodInfo.ReturnType.GenericTypeArguments;
+							if (genericTypeArguments == null || genericTypeArguments.Length != 1 || genericTypeArguments[0] != fieldGenericType)
+								continue;
+						}
 
 						methods.Add(new GUIContent($"[{index}] {type.Name}/{(methodInfo.Name.StartsWith("get_") ? methodInfo.Name[4..] : methodInfo.Name)}", methodInfo.Name));
 						targets.Add(sub);
