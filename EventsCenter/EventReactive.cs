@@ -303,8 +303,7 @@ namespace UnityEventsCenter
 
 		public void ConnectTo(EventReactive<T> ev)
 		{
-			Assert.IsNull(ev.transformer);
-			Assert.IsTrue(ev.isDisconnected);
+			Assert.IsNull(ev.transformer, "Target EventReactive is not a end-link and can not be connected to.");
 			ev.isDisconnected = false;
 			ev.transformer = new ConnectToTransformer(this, ev);
 
